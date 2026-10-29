@@ -21,4 +21,25 @@ public class FlowerArea : MonoBehaviour
     /// The list of all flowers in the flower area
     /// </summary>
     public List<Flower> Flowers { get; private set; }
+
+    /// <summary>
+    /// Reset the flowers and flower plants
+    /// </summary>
+    public void ResetFlowers()
+    {
+        // Rotate each flower plant around the Y axis and subtly around X and Z
+        foreach (GameObject flowerPlant in flowerPlants)
+        {
+            float xRotation = UnityEngine.Random.Range(-5f, 5f);
+            float yRotation = UnityEngine.Random.Range(-180f, 180f);
+            float zRotation = UnityEngine.Random.Range(-5f, 5f);
+            flowerPlant.transform.localRotation = Quaternion.Euler(xRotation, yRotation, zRotation);
+        }
+
+        // Reset each flower
+        foreach (Flower flower in Flowers)
+        {
+            flower.ResetFlower();
+        }
+    }
 }
