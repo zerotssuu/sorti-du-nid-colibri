@@ -1,0 +1,26 @@
+# Unity : dossiers générés (gros, recréés automatiquement)
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+
+# Fichiers d'IDE
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.user
+
+# ML-Agents : résultats bruts d'entraînement (on ne garde que le .onnx copié dans Assets)
+/results/
+/summaries/
+
+# Divers
+*.bak
+Packages/manifest.json.bak
