@@ -260,4 +260,117 @@ public class HummingbirdAgent : Agent
         // Apply the new rotation
         transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
     }
+
+    /// <summary>
+    /// Collect vector observations from the environment
+    /// </summary>
+    /// <param name="sensor">The vector sensor</param>
+    public override void CollectObservations(VectorSensor sensor)
+    {
+        // If nearestFlower is null, observe an empty array and return early
+        if (nearestFlower == null)
+        {
+            sensor.AddObservation(new float[10]);
+            return;
+        }
+
+        // Observe the agent's local rotation (4 observations)
+        sensor.AddObservation(transform.localRotation.normalized);
+
+        // Get a vector from the beak tip to the nearest flower
+        Vector3 toFlower = nearestFlower.FlowerCenterPosition - beakTip.position;
+
+        // Observe a normalized vector pointing to the nearest flower (3 observations)
+        sensor.AddObservation(toFlower.normalized);
+
+        // Observe a dot product that indicates whether the beak tip is in front of the flower (1 observation)
+        // (+1 means that the beak tip is directly in front of the flower, -1 means directly behind)
+        sensor.AddObservation(Vector3.Dot(toFlower.normalized, -nearestFlower.FlowerUpVector.normalized));
+
+        // Observe a dot product that indicates whether the beak is pointing toward the flower (1 observation)
+        // (+1 means that the beak is pointing directly at the flower, -1 means directly away)
+        sensor.AddObservation(Vector3.Dot(beakTip.forward.normalized, -nearestFlower.FlowerUpVector.normalized));
+
+        // Observe the relative distance from the beak tip to the flower (1 observation)
+        sensor.AddObservation(toFlower.magnitude / FlowerArea.AreaDiameter);
+
+        // 10 total observations
+    }
+
+    /// <summary>
+    /// When Behavior Type is set to "Heuristic Only" on the agent's Behavior Parameters,
+    /// this function will be called. Its return values will be fed into
+    /// <see cref="OnActionReceived(ActionBuffers)"/> instead of using the neural network
+    /// </summary>
+    /// <param name="actionsOut">And output action array</param>
+    public override void Heuristic(in ActionBuffers actionsOut)
+    {
+        // Create placeholders for all movement/turning
+        Vector3 forward = Vector3.zero;
+        Vector3 left = Vector3.zero;
+        Vector3 up = Vector3.zero;
+        float pitch = 0f;
+        float yaw = 0f;
+
+        // Convert keyboard inputs to movement and turning
+        // All values should be between -1 and +1
+        // Unity 6 (2026) : le projet peut utiliser le nouveau Input System, l'ancien Input Manager, ou les deux.
+        // Les directives #if choisissent la bonne API selon le reglage Active Input Handling du projet.
+#if ENABLE_INPUT_SYSTEM
+        var clavier = UnityEngine.InputSystem.Keyboard.current;
+        if (clavier != null)
+        {
+            // Forward/backward
+            if (clavier.wKey.isPressed) forward = transform.forward;
+            else if (clavier.sKey.isPressed) forward = -transform.forward;
+
+            // Left/right
+            if (clavier.aKey.isPressed) left = -transform.right;
+            else if (clavier.dKey.isPressed) left = transform.right;
+
+            // Up/down
+            if (clavier.eKey.isPressed) up = transform.up;
+            else if (clavier.cKey.isPressed) up = -transform.up;
+
+            // Pitch up/down
+            if (clavier.upArrowKey.isPressed) pitch = 1f;
+            else if (clavier.downArrowKey.isPressed) pitch = -1f;
+
+            // Turn left/right
+            if (clavier.leftArrowKey.isPressed) yaw = -1f;
+            else if (clavier.rightArrowKey.isPressed) yaw = 1f;
+        }
+#else
+        // Forward/backward
+        if (Input.GetKey(KeyCode.W)) forward = transform.forward;
+        else if (Input.GetKey(KeyCode.S)) forward = -transform.forward;
+
+        // Left/right
+        if (Input.GetKey(KeyCode.A)) left = -transform.right;
+        else if (Input.GetKey(KeyCode.D)) left = transform.right;
+
+        // Up/down
+        if (Input.GetKey(KeyCode.E)) up = transform.up;
+        else if (Input.GetKey(KeyCode.C)) up = -transform.up;
+
+        // Pitch up/down
+        if (Input.GetKey(KeyCode.UpArrow)) pitch = 1f;
+        else if (Input.GetKey(KeyCode.DownArrow)) pitch = -1f;
+
+        // Turn left/right
+        if (Input.GetKey(KeyCode.LeftArrow)) yaw = -1f;
+        else if (Input.GetKey(KeyCode.RightArrow)) yaw = 1f;
+#endif
+
+        // Combine the movement vectors and normalize
+        Vector3 combined = (forward + left + up).normalized;
+
+        // Add the 3 movement values, pitch, and yaw to the actionsOut array
+        var continuousActions = actionsOut.ContinuousActions;
+        continuousActions[0] = combined.x;
+        continuousActions[1] = combined.y;
+        continuousActions[2] = combined.z;
+        continuousActions[3] = pitch;
+        continuousActions[4] = yaw;
+    }
 }
