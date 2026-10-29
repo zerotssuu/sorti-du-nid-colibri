@@ -42,4 +42,14 @@ public class FlowerArea : MonoBehaviour
             flower.ResetFlower();
         }
     }
+
+    /// <summary>
+    /// Gets the <see cref="Flower"/> that a nectar collider belongs to
+    /// </summary>
+    /// <param name="collider">The nectar collider</param>
+    /// <returns>The matching flower</returns>
+    public Flower GetFlowerFromNectar(Collider collider)
+    {
+        return nectarFlowerDictionary[collider];
+    }
 }
