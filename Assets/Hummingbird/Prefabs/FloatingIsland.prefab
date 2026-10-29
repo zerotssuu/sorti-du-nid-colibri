@@ -2270,7 +2270,7 @@ GameObject:
   - component: {fileID: 8335302975981083721}
   m_Layer: 0
   m_Name: FloatingIsland
-  m_TagString: boundary
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
