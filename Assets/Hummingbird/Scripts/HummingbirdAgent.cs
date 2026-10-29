@@ -167,4 +167,97 @@ public class HummingbirdAgent : Agent
             }
         }
     }
+
+    /// <summary>
+    /// Initialize the agent
+    /// </summary>
+    public override void Initialize()
+    {
+        rigidbody = GetComponent<Rigidbody>();
+        flowerArea = GetComponentInParent<FlowerArea>();
+
+        // If not training mode, no max step, play forever
+        if (!trainingMode) MaxStep = 0;
+    }
+
+    /// <summary>
+    /// Reset the agent when an episode begins
+    /// </summary>
+    public override void OnEpisodeBegin()
+    {
+        if (trainingMode)
+        {
+            // Only reset flowers in training when there is one agent per area
+            flowerArea.ResetFlowers();
+        }
+
+        // Reset nectar obtained
+        NectarObtained = 0f;
+
+        // Zero out velocities so that movement stops before a new episode begins
+        rigidbody.linearVelocity = Vector3.zero; // Unity 6 : velocity est devenu linearVelocity
+        rigidbody.angularVelocity = Vector3.zero;
+
+        // Default to spawning in front of a flower
+        bool inFrontOfFlower = true;
+        if (trainingMode)
+        {
+            // Spawn in front of flower 50% of the time during training
+            inFrontOfFlower = UnityEngine.Random.value > .5f;
+        }
+
+        // Move the agent to a new random position
+        MoveToSafeRandomPosition(inFrontOfFlower);
+
+        // Recalculate the nearest flower now that the agent has moved
+        UpdateNearestFlower();
+    }
+
+    /// <summary>
+    /// Called when and action is received from either the player input or the neural network
+    ///
+    /// vectorAction[i] represents:
+    /// Index 0: move vector x (+1 = right, -1 = left)
+    /// Index 1: move vector y (+1 = up, -1 = down)
+    /// Index 2: move vector z (+1 = forward, -1 = backward)
+    /// Index 3: pitch angle (+1 = pitch up, -1 = pitch down)
+    /// Index 4: yaw angle (+1 = turn right, -1 = turn left)
+    /// </summary>
+    /// <param name="actions">The actions to take</param>
+    public override void OnActionReceived(ActionBuffers actions)
+    {
+        // Don't take actions if frozen
+        if (frozen) return;
+
+        // Extract continuous actions
+        var vectorAction = actions.ContinuousActions;
+
+        // Calculate movement vector
+        Vector3 move = new Vector3(vectorAction[0], vectorAction[1], vectorAction[2]);
+
+        // Add force in the direction of the move vector
+        rigidbody.AddForce(move * moveForce);
+
+        // Get the current rotation
+        Vector3 rotationVector = transform.rotation.eulerAngles;
+
+        // Calculate pitch and yaw rotation
+        float pitchChange = vectorAction[3];
+        float yawChange = vectorAction[4];
+
+        // Calculate smooth rotation changes
+        smoothPitchChange = Mathf.MoveTowards(smoothPitchChange, pitchChange, 2f * Time.fixedDeltaTime);
+        smoothYawChange = Mathf.MoveTowards(smoothYawChange, yawChange, 2f * Time.fixedDeltaTime);
+
+        // Calculate new pitch and yaw based on smoothed values
+        // Clamp  pitch to avoid flipping upside down
+        float pitch = rotationVector.x + smoothPitchChange * Time.fixedDeltaTime * pitchSpeed;
+        if (pitch > 180f) pitch -= 360f;
+        pitch = Mathf.Clamp(pitch, -MaxPitchAngle, MaxPitchAngle);
+
+        float yaw = rotationVector.y + smoothYawChange * Time.fixedDeltaTime * yawSpeed;
+
+        // Apply the new rotation
+        transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+    }
 }
